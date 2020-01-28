@@ -13,7 +13,7 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
-             [date :as du]
+             [date-2 :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
   (:import [java.sql DatabaseMetaData Timestamp]))
@@ -73,19 +73,19 @@
 (defmethod driver/current-db-time :crate [& args]
   (apply driver.common/current-db-time args))
 
-(defn- sql-interval [unit amount]
-  (format "current_timestamp + %d" (* unit amount)))
+(defn- sql-interval [dt unit amount]
+  (format "%d + %d" (dt) (* unit amount)))
 
-(defmethod driver/date-interval :crate [_ unit amount]
+(defmethod driver/date-add :crate [_ dt unit amount]
   (case unit
-    :quarter (recur nil :month (hx/* amount 3))
-    :year    (hsql/raw (sql-interval year   amount))
-    :month   (hsql/raw (sql-interval month  amount))
-    :week    (hsql/raw (sql-interval week   amount))
-    :day     (hsql/raw (sql-interval day    amount))
-    :hour    (hsql/raw (sql-interval hour   amount))
-    :minute  (hsql/raw (sql-interval minute amount))
-    :second  (hsql/raw (sql-interval second amount))))
+    :quarter (recur nil dt :month (hx/* amount 3))
+    :year    (hsql/raw (sql-interval dt year   amount))
+    :month   (hsql/raw (sql-interval dt month  amount))
+    :week    (hsql/raw (sql-interval dt week   amount))
+    :day     (hsql/raw (sql-interval dt day    amount))
+    :hour    (hsql/raw (sql-interval dt hour   amount))
+    :minute  (hsql/raw (sql-interval dt minute amount))
+    :second  (hsql/raw (sql-interval dt second amount))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -136,7 +136,7 @@
 
 (defn- expr->literal [expr]
   (if (instance? Timestamp expr)
-    (hx/literal (du/date->iso-8601 expr))
+    (hx/literal (du/format-sql expr))
     expr))
 
 (defmethod sql.qp/date [:crate :default] [_ _ expr]
@@ -249,7 +249,7 @@
 
 (defn- describe-table-database-type->base-type [driver database-type]
   (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warn (trs "Don't know how to map column type ''{0}'' to a Field base_type, falling back to :type/*."
+      (do (log/warn (trs "Dont know how to map column type {0} to a Field base_type, falling back to :type/*."
                          database-type))
           :type/*)))
 
