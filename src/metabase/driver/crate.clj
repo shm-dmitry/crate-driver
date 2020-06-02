@@ -286,12 +286,11 @@
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
-      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["select table_catalog || '.' || table_name as name
+      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["select table_catalog as schema , table_name as name
                                                                                     from information_schema.views
                                                                                     union all
-                                                                                    select table_catalog || '.' || table_name
+                                                                                    select table_catalog , table_name
                                                                                     from information_schema.tables
                                                                                 "])]
         {:name  
-         :schema (when (seq database)
-                   database)})))})
+         :schema })))})
