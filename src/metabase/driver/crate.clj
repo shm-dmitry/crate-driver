@@ -279,3 +279,19 @@
          (assoc (select-keys table [:name :schema]) :fields)
          ;; find PKs and mark them
          (add-table-pks metadata))))
+
+
+(defmethod driver/describe-database :sparksql
+  [_ {:keys [details] :as database}]
+  {:tables
+   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+     (set
+      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["select table_catalog || '.' || table_name as name
+                                                                                    from information_schema.views
+                                                                                    union all
+                                                                                    select table_catalog || '.' || table_name
+                                                                                    from information_schema.tables
+                                                                                "])]
+        {:name  
+         :schema (when (seq database)
+                   database)})))})
